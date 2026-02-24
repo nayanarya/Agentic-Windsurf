@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forecast Dashboard - Quarterly HC & Revenue</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .dashboard-header {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .dashboard-header h1 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+        }
+
+        .dashboard-header p {
+            color: #7f8c8d;
+            font-size: 1rem;
+        }
+
+        .filter-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            white-space: nowrap;
+        }
+
+        .filter-container label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+
+        .coach-filter {
+            padding: 0.75rem 1rem;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            color: #2c3e50;
+            cursor: pointer;
+            min-width: 200px;
+            transition: all 0.3s;
+        }
+
+        .coach-filter:hover {
+            border-color: #764ba2;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .coach-filter:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .metric-card h3 {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-card .value {
+            color: #2c3e50;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-card .label {
+            color: #95a5a6;
+            font-size: 0.85rem;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        .chart-card h2 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+            text-align: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <div>
+                <h1>📊 Forecast Dashboard</h1>
+                <p>Quarterly Headcount (HC) and Revenue Analysis</p>
+            </div>
+            <div class="filter-container">
+                <label for="coach-filter">Project Coach:</label>
+                <select id="coach-filter" class="coach-filter">
+                    <option value="All">All</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Loading dashboard data...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="content" style="display: none;">
+            <div class="metrics-grid" id="metricsGrid"></div>
+            
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h2>Quarterly Headcount (HC)</h2>
+                    <div class="chart-container">
+                        <canvas id="hcChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h2>Quarterly Revenue</h2>
+                    <div class="chart-container">
+                        <canvas id="revChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h2>HC Breakdown (On/Off)</h2>
+                    <div class="chart-container">
+                        <canvas id="hcBreakdownChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h2>Revenue Breakdown (On/Off)</h2>
+                    <div class="chart-container">
+                        <canvas id="revBreakdownChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        let currentCharts = {};
+
+        async function loadDashboard(coach = null) {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+                document.getElementById('content').style.display = 'none';
+
+                const url = coach ? `${API_BASE_URL}/api/dashboard?coach=${encodeURIComponent(coach)}` : `${API_BASE_URL}/api/dashboard`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to fetch dashboard data');
+                
+                const data = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                if (data.coaches) {
+                    populateCoachFilter(data.coaches, coach);
+                }
+                
+                renderMetrics(data);
+                renderCharts(data);
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = `Error: ${error.message}. Make sure the backend is running.`;
+            }
+        }
+
+        function populateCoachFilter(coaches, selectedCoach) {
+            const select = document.getElementById('coach-filter');
+            select.innerHTML = '';
+            
+            coaches.forEach(coach => {
+                const option = document.createElement('option');
+                option.value = coach;
+                option.textContent = coach;
+                if (coach === selectedCoach || (!selectedCoach && coach === 'All')) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            
+            select.onchange = (e) => {
+                loadDashboard(e.target.value === 'All' ? null : e.target.value);
+            };
+        }
+
+        function renderMetrics(data) {
+            const totalHC = data.total_hc.reduce((a, b) => a + b, 0);
+            const totalRev = data.total_rev.reduce((a, b) => a + b, 0);
+            const avgHC = (totalHC / data.total_hc.length).toFixed(2);
+            const avgRev = (totalRev / data.total_rev.length).toFixed(2);
+
+            const metricsHTML = `
+                <div class="metric-card">
+                    <h3>Total HC (All Quarters)</h3>
+                    <div class="value">${totalHC.toFixed(2)}</div>
+                    <div class="label">Headcount</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Revenue (All Quarters)</h3>
+                    <div class="value">$${totalRev.toFixed(2)}K</div>
+                    <div class="label">Revenue</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Average HC per Quarter</h3>
+                    <div class="value">${avgHC}</div>
+                    <div class="label">Headcount</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Average Revenue per Quarter</h3>
+                    <div class="value">$${avgRev}K</div>
+                    <div class="label">Revenue</div>
+                </div>
+            `;
+            
+            document.getElementById('metricsGrid').innerHTML = metricsHTML;
+        }
+
+        function renderCharts(data) {
+            // Destroy existing charts
+            Object.values(currentCharts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            currentCharts = {};
+
+            const chartColors = {
+                primary: '#667eea',
+                secondary: '#764ba2',
+                success: '#48bb78',
+                warning: '#ed8936',
+                info: '#4299e1',
+                danger: '#f56565'
+            };
+
+            // HC Chart
+            currentCharts.hc = new Chart(document.getElementById('hcChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.quarters,
+                    datasets: [{
+                        label: 'Total HC',
+                        data: data.total_hc,
+                        backgroundColor: chartColors.primary,
+                        borderColor: chartColors.primary,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Revenue Chart
+            currentCharts.rev = new Chart(document.getElementById('revChart'), {
+                type: 'line',
+                data: {
+                    labels: data.quarters,
+                    datasets: [{
+                        label: 'Total Revenue ($K)',
+                        data: data.total_rev,
+                        backgroundColor: 'rgba(118, 75, 162, 0.2)',
+                        borderColor: chartColors.secondary,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // HC Breakdown Chart
+            currentCharts.hcBreakdown = new Chart(document.getElementById('hcBreakdownChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.quarters,
+                    datasets: [
+                        {
+                            label: 'On HC',
+                            data: data.on_hc,
+                            backgroundColor: chartColors.success,
+                            borderColor: chartColors.success,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Off HC',
+                            data: data.off_hc,
+                            backgroundColor: chartColors.warning,
+                            borderColor: chartColors.warning,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Revenue Breakdown Chart
+            currentCharts.revBreakdown = new Chart(document.getElementById('revBreakdownChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.quarters,
+                    datasets: [
+                        {
+                            label: 'On Revenue ($K)',
+                            data: data.on_rev,
+                            backgroundColor: chartColors.info,
+                            borderColor: chartColors.info,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Off Revenue ($K)',
+                            data: data.off_rev,
+                            backgroundColor: chartColors.danger,
+                            borderColor: chartColors.danger,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>
