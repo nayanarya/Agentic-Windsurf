@@ -13,6 +13,8 @@ function App() {
   const [expandedProjects, setExpandedProjects] = useState({})
   const [selectedCoach, setSelectedCoach] = useState('All')
   const [confirmDialog, setConfirmDialog] = useState({ show: false, projectId: null, changes: [] })
+  const [compareFile, setCompareFile] = useState(null)
+  const [comparing, setComparing] = useState(false)
 
   useEffect(() => {
     fetchProjects()
@@ -160,6 +162,57 @@ function App() {
     setConfirmDialog({ show: false, projectId: null, changes: [] })
   }
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    
+    const validExtension = file.name.toLowerCase().endsWith('.xlsx')
+    const validMimeType = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.type === ''
+    
+    if (validExtension && validMimeType) {
+      setCompareFile(file)
+    } else {
+      alert('❌ Invalid file format!\n\nPlease select a valid Excel file (.xlsx format only).')
+      setCompareFile(null)
+      e.target.value = ''
+    }
+  }
+
+  const handleCompare = async () => {
+    if (!compareFile) {
+      alert('Please select a file to compare')
+      return
+    }
+
+    try {
+      setComparing(true)
+      const formData = new FormData()
+      formData.append('file', compareFile)
+      
+      const response = await axios.post(`${API_BASE_URL}/api/compare`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      
+      const comparisonData = encodeURIComponent(JSON.stringify(response.data))
+      window.open(`/comparison-report.html?data=${comparisonData}`, '_blank')
+    } catch (err) {
+      alert('Failed to compare files: ' + err.message)
+      console.error(err)
+    } finally {
+      setComparing(false)
+    }
+  }
+
+  const handleReset = () => {
+    setCompareFile(null)
+    const fileInput = document.getElementById('file-upload')
+    if (fileInput) {
+      fileInput.value = ''
+    }
+  }
+
   const toggleProject = (projectId) => {
     setExpandedProjects(prev => ({
       ...prev,
@@ -172,10 +225,10 @@ function App() {
   }
 
   const quarterGroups = [
-    { quarter: 'OND', months: ['Oct', 'Nov', 'Dec'], label: "OND'25" },
-    { quarter: 'JFM', months: ['Jan', 'Feb', 'Mar'], label: "JFM'26" },
-    { quarter: 'AMJ', months: ['Apr', 'May', 'Jun'], label: "AMJ'26" },
-    { quarter: 'JAS', months: ['Jul', 'Aug', 'Sep'], label: "JAS'26" }
+    { quarter: 'OND', months: ['Oct', 'Nov', 'Dec'], label: "OND" },
+    { quarter: 'JFM', months: ['Jan', 'Feb', 'Mar'], label: "JFM" },
+    { quarter: 'AMJ', months: ['Apr', 'May', 'Jun'], label: "AMJ" },
+    { quarter: 'JAS', months: ['Jul', 'Aug', 'Sep'], label: "JAS" }
   ]
 
   if (loading) return <div className="container"><h2>Loading projects...</h2></div>
@@ -200,6 +253,34 @@ function App() {
             ))}
           </select>
         </div>
+        
+        <div className="compare-group">
+          <label htmlFor="file-upload" className="file-upload-label">
+            {compareFile ? '📊 ' + compareFile.name : '📁 Choose .xlsx file'}
+          </label>
+          <input
+            type="file"
+            id="file-upload"
+            accept=".xlsx"
+            onChange={handleFileChange}
+            className="file-input"
+          />
+          <button 
+            className="compare-btn"
+            onClick={handleCompare}
+            disabled={!compareFile || comparing}
+          >
+            {comparing ? 'Comparing...' : '🔍 Compare'}
+          </button>
+          <button 
+            className="reset-btn"
+            onClick={handleReset}
+            disabled={!compareFile}
+          >
+            🔄 Reset
+          </button>
+        </div>
+        
         <button 
           className="dashboard-btn"
           onClick={() => window.open('/dashboard.html', '_blank')}
@@ -237,7 +318,7 @@ function App() {
                     <div className="quarter-row">
                       {months.map((month, idx) => (
                         <div key={month} className="month-column">
-                          <h5>{month}'25</h5>
+                          <h5>{month}</h5>
                           <div className="metric-group">
                             <label>ON Rev</label>
                             <input

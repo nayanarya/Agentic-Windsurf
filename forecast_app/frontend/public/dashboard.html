@@ -179,6 +179,10 @@
                 <select id="coach-filter" class="coach-filter">
                     <option value="All">All</option>
                 </select>
+                <label for="project-filter" style="margin-left: 1rem;">Project Name:</label>
+                <select id="project-filter" class="coach-filter">
+                    <option value="All">All</option>
+                </select>
             </div>
         </div>
 
@@ -224,13 +228,18 @@
         const API_BASE_URL = 'http://localhost:8000';
         let currentCharts = {};
 
-        async function loadDashboard(coach = null) {
+        async function loadDashboard(coach = null, projectName = null) {
             try {
                 document.getElementById('loading').style.display = 'block';
                 document.getElementById('error').style.display = 'none';
                 document.getElementById('content').style.display = 'none';
 
-                const url = coach ? `${API_BASE_URL}/api/dashboard?coach=${encodeURIComponent(coach)}` : `${API_BASE_URL}/api/dashboard`;
+                let url = `${API_BASE_URL}/api/dashboard`;
+                const params = [];
+                if (coach) params.push(`coach=${encodeURIComponent(coach)}`);
+                if (projectName) params.push(`project_name=${encodeURIComponent(projectName)}`);
+                if (params.length > 0) url += '?' + params.join('&');
+
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Failed to fetch dashboard data');
                 
@@ -241,6 +250,10 @@
                 
                 if (data.coaches) {
                     populateCoachFilter(data.coaches, coach);
+                }
+                
+                if (data.project_names) {
+                    populateProjectFilter(data.project_names, projectName);
                 }
                 
                 renderMetrics(data);
@@ -267,7 +280,30 @@
             });
             
             select.onchange = (e) => {
-                loadDashboard(e.target.value === 'All' ? null : e.target.value);
+                const coach = e.target.value === 'All' ? null : e.target.value;
+                document.getElementById('project-filter').value = 'All';
+                loadDashboard(coach, null);
+            };
+        }
+
+        function populateProjectFilter(projectNames, selectedProject) {
+            const select = document.getElementById('project-filter');
+            select.innerHTML = '';
+            
+            projectNames.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project;
+                option.textContent = project;
+                if (project === selectedProject || (!selectedProject && project === 'All')) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            
+            select.onchange = (e) => {
+                const coach = document.getElementById('coach-filter').value;
+                const projectName = e.target.value === 'All' ? null : e.target.value;
+                loadDashboard(coach === 'All' ? null : coach, projectName);
             };
         }
 

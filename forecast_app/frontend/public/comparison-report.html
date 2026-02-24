@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forecast Comparison Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .report-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .report-header {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .report-header h1 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+        }
+
+        .report-header p {
+            color: #7f8c8d;
+            font-size: 1rem;
+        }
+
+        .filter-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            white-space: nowrap;
+        }
+
+        .filter-container label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+
+        .coach-filter {
+            padding: 0.75rem 1rem;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            color: #2c3e50;
+            cursor: pointer;
+            min-width: 200px;
+            transition: all 0.3s;
+        }
+
+        .coach-filter:hover {
+            border-color: #764ba2;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .coach-filter:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        .summary-card h3 {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .summary-card .value {
+            color: #2c3e50;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .project-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .project-header {
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .project-header h2 {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .project-meta {
+            display: flex;
+            gap: 2rem;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .project-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quarters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .quarter-section {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .quarter-section h3 {
+            color: #667eea;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .file-headers {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .file-headers .left-file {
+            text-align: left;
+        }
+
+        .file-headers .separator {
+            text-align: center;
+            color: #7f8c8d;
+        }
+
+        .file-headers .right-file {
+            text-align: right;
+        }
+
+        .change-item {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .change-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .metric-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+
+        .values-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .value-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .value-label {
+            color: #7f8c8d;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .value-number {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .difference {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .difference.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .difference.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 12px;
+            color: #667eea;
+            font-size: 1.2rem;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .no-changes {
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            text-align: center;
+            color: #48bb78;
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .quarters-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="report-header">
+            <div>
+                <h1>📊 Forecast Comparison Report</h1>
+                <p id="fileComparison">Detailed quarterly HC and Revenue changes by project</p>
+            </div>
+            <div class="filter-container">
+                <label for="coach-filter">Project Coach:</label>
+                <select id="coach-filter" class="coach-filter">
+                    <option value="All">All</option>
+                </select>
+                <label for="project-filter" style="margin-left: 1rem;">Project Name:</label>
+                <select id="project-filter" class="coach-filter">
+                    <option value="All">All</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Loading comparison data...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="content" style="display: none;">
+            <div class="summary-cards" id="summaryCards"></div>
+            <div id="projectsList"></div>
+        </div>
+    </div>
+
+    <script>
+        let fullData = null;
+        let selectedCoach = 'All';
+        let selectedProject = 'All';
+
+        function getComparisonData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const dataParam = urlParams.get('data');
+            if (dataParam) {
+                try {
+                    return JSON.parse(decodeURIComponent(dataParam));
+                } catch (e) {
+                    console.error('Error parsing comparison data:', e);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function renderReport() {
+            fullData = getComparisonData();
+            
+            if (!fullData) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'No comparison data found. Please run comparison again.';
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            if (fullData.current_file_name && fullData.uploaded_file_name) {
+                document.getElementById('fileComparison').innerHTML = `
+                    Comparing: <strong>${fullData.current_file_name}</strong> vs <strong>${fullData.uploaded_file_name}</strong>
+                `;
+            }
+
+            setupFilters();
+            applyFilters();
+        }
+
+        function setupFilters() {
+            const coaches = ['All', ...new Set(fullData.projects.map(p => p.project_coach).filter(c => c))];
+            const coachSelect = document.getElementById('coach-filter');
+            coachSelect.innerHTML = '';
+            coaches.forEach(coach => {
+                const option = document.createElement('option');
+                option.value = coach;
+                option.textContent = coach;
+                coachSelect.appendChild(option);
+            });
+
+            coachSelect.onchange = (e) => {
+                selectedCoach = e.target.value;
+                selectedProject = 'All';
+                updateProjectFilter();
+                applyFilters();
+            };
+
+            updateProjectFilter();
+        }
+
+        function updateProjectFilter() {
+            let projects = fullData.projects;
+            if (selectedCoach !== 'All') {
+                projects = projects.filter(p => p.project_coach === selectedCoach);
+            }
+            
+            const projectNames = ['All', ...new Set(projects.map(p => p.project_name))];
+            const projectSelect = document.getElementById('project-filter');
+            projectSelect.innerHTML = '';
+            projectNames.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project;
+                option.textContent = project;
+                projectSelect.appendChild(option);
+            });
+
+            projectSelect.onchange = (e) => {
+                selectedProject = e.target.value;
+                applyFilters();
+            };
+        }
+
+        function applyFilters() {
+            let filteredProjects = fullData.projects;
+
+            if (selectedCoach !== 'All') {
+                filteredProjects = filteredProjects.filter(p => p.project_coach === selectedCoach);
+            }
+
+            if (selectedProject !== 'All') {
+                filteredProjects = filteredProjects.filter(p => p.project_name === selectedProject);
+            }
+
+            const filteredData = {
+                ...fullData,
+                projects: filteredProjects,
+                total_projects_with_changes: filteredProjects.length
+            };
+
+            renderSummary(filteredData);
+            renderProjects(filteredData);
+        }
+
+        function renderSummary(data) {
+            const summaryHTML = `
+                <div class="summary-card">
+                    <h3>Projects with Changes</h3>
+                    <div class="value">${data.total_projects_with_changes}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Total Projects (Current)</h3>
+                    <div class="value">${data.total_projects_current}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Total Projects (Uploaded)</h3>
+                    <div class="value">${data.total_projects_uploaded}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Comparison Status</h3>
+                    <div class="value" style="font-size: 1.5rem; color: #48bb78;">✓ Complete</div>
+                </div>
+            `;
+            document.getElementById('summaryCards').innerHTML = summaryHTML;
+        }
+
+        function renderProjects(data) {
+            const projectsList = document.getElementById('projectsList');
+            
+            if (!data.projects || data.projects.length === 0) {
+                projectsList.innerHTML = '<div class="no-changes">✓ No changes detected between files!</div>';
+                return;
+            }
+
+            const currentFileName = data.current_file_name || 'Current';
+            const uploadedFileName = data.uploaded_file_name || 'Uploaded';
+
+            let projectsHTML = '';
+
+            data.projects.forEach(project => {
+                projectsHTML += `
+                    <div class="project-card">
+                        <div class="project-header">
+                            <h2>${project.project_name}</h2>
+                            <div class="project-meta">
+                                <span>🏢 <strong>Client:</strong> ${project.client_name || 'N/A'}</span>
+                                <span>👤 <strong>Coach:</strong> ${project.project_coach || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div class="quarters-grid">
+                            ${project.quarters.map(quarter => `
+                                <div class="quarter-section">
+                                    <h3>${quarter.quarter}</h3>
+                                    <div class="file-headers">
+                                        <div class="left-file">${currentFileName}</div>
+                                        <div class="separator">vs</div>
+                                        <div class="right-file">${uploadedFileName}</div>
+                                    </div>
+                                    ${quarter.changes.map(change => {
+                                        const diff = change.difference;
+                                        const diffClass = diff > 0 ? 'positive' : 'negative';
+                                        const diffSymbol = diff > 0 ? '+' : '';
+                                        
+                                        return `
+                                            <div class="change-item">
+                                                <div class="metric-name">${change.metric}</div>
+                                                <div class="values-row">
+                                                    <div class="value-box">
+                                                        <span class="value-number">${change.current}</span>
+                                                    </div>
+                                                    <div class="difference ${diffClass}">
+                                                        ${diffSymbol}${diff}
+                                                    </div>
+                                                    <div class="value-box">
+                                                        <span class="value-number">${change.uploaded}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            projectsList.innerHTML = projectsHTML;
+        }
+
+        renderReport();
+    </script>
+</body>
+</html>

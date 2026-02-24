@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import openpyxl
 from openpyxl.utils import get_column_letter
+import io
 
 app = FastAPI(title="Forecast Management API")
 
@@ -203,25 +204,34 @@ async def update_project(project_id: int, update: ProjectUpdate):
         raise HTTPException(status_code=500, detail=f"Error updating Excel file: {str(e)}")
 
 @app.get("/api/dashboard")
-async def get_dashboard_data(coach: Optional[str] = None):
+async def get_dashboard_data(coach: Optional[str] = None, project_name: Optional[str] = None):
     try:
         df = pd.read_excel(EXCEL_PATH, sheet_name="Sheet1")
         
         coaches = ['All'] + sorted(df['Project coach'].dropna().unique().tolist())
         
+        filtered_df = df.copy()
         if coach and coach != 'All':
-            df = df[df['Project coach'] == coach]
+            filtered_df = filtered_df[filtered_df['Project coach'] == coach]
+        
+        project_names = ['All'] + sorted(filtered_df['Project name'].dropna().unique().tolist())
+        
+        if project_name and project_name != 'All':
+            filtered_df = filtered_df[filtered_df['Project name'] == project_name]
         
         dashboard_data = {
-            "quarters": ["OND'25", "JFM'26", "AMJ'26", "JAS'26"],
+            "quarters": ["OND", "JFM", "AMJ", "JAS"],
             "on_hc": [],
             "on_rev": [],
             "off_hc": [],
             "off_rev": [],
             "total_hc": [],
             "total_rev": [],
-            "coaches": coaches
+            "coaches": coaches,
+            "project_names": project_names
         }
+        
+        df = filtered_df
         
         for quarter in ['OND', 'JFM', 'AMJ', 'JAS']:
             if quarter in QUARTER_COLUMNS:
@@ -248,6 +258,87 @@ async def get_dashboard_data(coach: Optional[str] = None):
     except Exception as e:
         import traceback
         error_detail = f"Error generating dashboard data: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
+
+@app.post("/api/compare")
+async def compare_files(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        uploaded_df = pd.read_excel(io.BytesIO(contents), sheet_name="Sheet1")
+        current_df = pd.read_excel(EXCEL_PATH, sheet_name="Sheet1")
+        
+        project_comparisons = []
+        
+        if 'Project name' not in current_df.columns:
+            raise HTTPException(status_code=400, detail="Project name column not found")
+        
+        for idx, current_row in current_df.iterrows():
+            project_name = current_row.get('Project name', '')
+            uploaded_row = uploaded_df[uploaded_df['Project name'] == project_name]
+            
+            if uploaded_row.empty:
+                continue
+            
+            uploaded_row = uploaded_row.iloc[0]
+            
+            project_changes = {
+                'project_name': project_name,
+                'client_name': current_row.get('Client name', ''),
+                'project_coach': current_row.get('Project coach', ''),
+                'quarters': []
+            }
+            
+            has_changes = False
+            
+            for quarter in ['OND', 'JFM', 'AMJ', 'JAS']:
+                if quarter not in QUARTER_COLUMNS:
+                    continue
+                
+                cols = QUARTER_COLUMNS[quarter]
+                
+                quarter_data = {
+                    'quarter': quarter,
+                    'changes': []
+                }
+                
+                for metric_type, col_name in [
+                    ('On HC', cols.get('on_hc', '')),
+                    ('On Rev', cols.get('on_rev', '')),
+                    ('Off HC', cols.get('off_hc', '')),
+                    ('Off Rev', cols.get('off_rev', ''))
+                ]:
+                    if col_name and col_name in current_df.columns and col_name in uploaded_df.columns:
+                        current_val = float(current_row.get(col_name, 0)) if pd.notna(current_row.get(col_name)) else 0
+                        uploaded_val = float(uploaded_row.get(col_name, 0)) if pd.notna(uploaded_row.get(col_name)) else 0
+                        
+                        if abs(current_val - uploaded_val) > 0.01:
+                            quarter_data['changes'].append({
+                                'metric': metric_type,
+                                'current': round(current_val, 2),
+                                'uploaded': round(uploaded_val, 2),
+                                'difference': round(uploaded_val - current_val, 2)
+                            })
+                            has_changes = True
+                
+                if quarter_data['changes']:
+                    project_changes['quarters'].append(quarter_data)
+            
+            if has_changes:
+                project_comparisons.append(project_changes)
+        
+        return {
+            'status': 'success',
+            'total_projects_with_changes': len(project_comparisons),
+            'total_projects_current': len(current_df),
+            'total_projects_uploaded': len(uploaded_df),
+            'current_file_name': EXCEL_PATH.name,
+            'uploaded_file_name': file.filename,
+            'projects': project_comparisons
+        }
+    except Exception as e:
+        import traceback
+        error_detail = f"Error comparing files: {str(e)}\n{traceback.format_exc()}"
         print(error_detail)
         raise HTTPException(status_code=500, detail=error_detail)
 
