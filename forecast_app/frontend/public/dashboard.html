@@ -29,11 +29,7 @@
             padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .dashboard-header h1 {
@@ -48,6 +44,11 @@
         }
 
         .filter-container {
+            background: white;
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
             display: flex;
             align-items: center;
             gap: 1rem;
@@ -170,20 +171,19 @@
 <body>
     <div class="dashboard-container">
         <div class="dashboard-header">
-            <div>
-                <h1>📊 Forecast Dashboard</h1>
-                <p>Quarterly Headcount (HC) and Revenue Analysis</p>
-            </div>
-            <div class="filter-container">
-                <label for="coach-filter">Project Coach:</label>
-                <select id="coach-filter" class="coach-filter">
-                    <option value="All">All</option>
-                </select>
-                <label for="project-filter" style="margin-left: 1rem;">Project Name:</label>
-                <select id="project-filter" class="coach-filter">
-                    <option value="All">All</option>
-                </select>
-            </div>
+            <h1>📊 Forecast Dashboard</h1>
+            <p>Quarterly Headcount (HC) and Revenue Analysis</p>
+        </div>
+
+        <div class="filter-container">
+            <label for="coach-filter">Project Coach:</label>
+            <select id="coach-filter" class="coach-filter">
+                <option value="All">All</option>
+            </select>
+            <label for="project-filter" style="margin-left: 1rem;">Project Name:</label>
+            <select id="project-filter" class="coach-filter">
+                <option value="All">All</option>
+            </select>
         </div>
 
         <div id="loading" class="loading">Loading dashboard data...</div>
